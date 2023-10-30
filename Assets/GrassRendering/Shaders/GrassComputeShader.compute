@@ -1,0 +1,92 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel SimulateGrass
+
+#include "./shared/GrassBlade.hlsl"
+#include "./shared/PerlinNoise.cginc"
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<GrassBlade> GrassBladesBuffer;
+float Time;
+float WindVelocity;
+int WindNoiseColumns;
+int WindNoiseRows;
+float3 GrassOrigin;
+float3 GrassSize;
+float4x4 ViewMatrix;
+float3 CameraPosition;
+StructuredBuffer<BoundInfo> boundInfo;
+AppendStructuredBuffer<GrassBlade> OutputGrassBladesBuffer;
+
+inline uint IsVisibleAfterFrustumCulling(float4 clipPos)
+{
+    return (clipPos.z > clipPos.w ||
+            clipPos.x < -clipPos.w || 
+            clipPos.x > clipPos.w || 
+            clipPos.y < -clipPos.w || 
+            clipPos.y > clipPos.w) 
+            ? 0 : 1;
+}
+
+[numthreads(32,1,1)]
+void SimulateGrass (uint3 id : SV_DispatchThreadID, uint3 threadGroupID : SV_GroupThreadID)
+{
+    //SV_DispatchThreadID = current group id * numthreads(8,8,1) + current group thread id  
+
+    uint index = id.x + threadGroupID.x * 32;
+    GrassBlade grassBlade = GrassBladesBuffer[index]; 
+
+    //Check if the instance is visible
+    float3 minPos = boundInfo[0].boundsCenter - boundInfo[0].boundsExtents + grassBlade.position;
+    float3 maxPos = boundInfo[0].boundsCenter + boundInfo[0].boundsExtents + grassBlade.position;
+
+    float4 boxCorners[8];
+    boxCorners[0] = float4(minPos.x, minPos.y, minPos.z, 1.0);
+    boxCorners[1] = float4(minPos.x, minPos.y, maxPos.z, 1.0);
+    boxCorners[2] = float4(minPos.x, maxPos.y, minPos.z, 1.0);
+    boxCorners[3] = float4(minPos.x, maxPos.y, maxPos.z, 1.0);
+    boxCorners[4] = float4(maxPos.x, minPos.y, minPos.z, 1.0);
+    boxCorners[5] = float4(maxPos.x, minPos.y, maxPos.z, 1.0);
+    boxCorners[6] = float4(maxPos.x, maxPos.y, minPos.z, 1.0);
+    boxCorners[7] = float4(maxPos.x, maxPos.y, maxPos.z, 1.0);
+
+    float4 clipPos = mul(ViewMatrix, boxCorners[0]);
+    uint isInFrustum = IsVisibleAfterFrustumCulling(clipPos);
+    
+    [unroll]
+    for (int i = 1; i < 8; i++)
+    {
+        clipPos = mul(ViewMatrix, boxCorners[i]);
+        // For Frustum
+        isInFrustum = saturate(isInFrustum + IsVisibleAfterFrustumCulling(clipPos));
+    }
+
+    if(isInFrustum)
+    {
+        const float viewDis = 10;
+        const float fadeOutDis = 3;
+        const float dis = distance(CameraPosition.xyz, grassBlade.position);
+        isInFrustum = dis < viewDis + fadeOutDis ? 1 : 0;
+        if(isInFrustum == 1 && (dis > viewDis && dis < viewDis + fadeOutDis))
+        {
+            isInFrustum = index % (1 << (uint)lerp(1, 32, (dis - viewDis) / fadeOutDis)) == 0 ? 1 : 0;
+            //
+        }
+    }
+        
+    if(isInFrustum)
+    {
+        float3 grassLocalPosition = grassBlade.position - GrassOrigin;
+        
+        float2 uv = float2(
+                (grassLocalPosition.x + (GrassSize.x / 2)) / GrassSize.x,
+                (grassLocalPosition.z + (GrassSize.z / 2)) / GrassSize.z
+            );
+        
+        grassBlade.windNoise = perlin(uv, WindNoiseColumns, WindNoiseRows, Time * WindVelocity);
+        
+        OutputGrassBladesBuffer.Append(grassBlade);
+    }
+}
+
+
