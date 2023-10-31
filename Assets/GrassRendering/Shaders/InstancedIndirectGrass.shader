@@ -68,8 +68,6 @@
                 StructuredBuffer<GrassBlade> OutputGrassBladesBuffer;
                 float3 WindDirection;
                 float WindForce;
-                half4 YoungGrassColor;
-                half4 OldGrassColor;
             CBUFFER_END
             
             sampler2D _BaseColorTexture;
@@ -103,7 +101,7 @@
                 Varyings OUT;
 
                 GrassBlade grassBlade;                
-                float3 positionWS = positionGrassVertexInHClipPos(                    
+                float3 positionWS = positionWindGrassVertex(                    
                     OutputGrassBladesBuffer,
                     instanceID,
                     grassBlade,
@@ -222,9 +220,7 @@
             CBUFFER_START(UnityPerMaterial)                
                 StructuredBuffer<GrassBlade> OutputGrassBladesBuffer;
                 float3 WindDirection;
-                float WindForce;
-                half4 YoungGrassColor;
-                half4 OldGrassColor;
+                float WindForce;                
             CBUFFER_END
 
             Varyings vert(Attributes IN, uint instanceID : SV_InstanceID)
@@ -232,7 +228,7 @@
                 Varyings OUT;
 
                 GrassBlade grassBlade;                
-                const float3 positionWS = positionGrassVertexInHClipPos(                    
+                const float3 positionWS = positionGrassVertex(                    
                     OutputGrassBladesBuffer,
                     instanceID,
                     grassBlade,

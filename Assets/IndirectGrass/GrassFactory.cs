@@ -206,8 +206,8 @@ public static class GrassFactory
         float maxExtent,
         float density,
         out Bounds bounds,
-        out List<GrassBlade> grassBlades,
-        out List<Vector3> allPosition
+        out List<GrassBlade> grassBlades
+        
 
     )
     {
@@ -285,7 +285,6 @@ public static class GrassFactory
         var grassBladesCount = (int)(grassBladesCountX * grassBladesCountY);
     
         grassBlades = new List<GrassBlade>();
-        allPosition = new List<Vector3>();
         
         for (int i = 0; i < grassBladesCount; ++i)
         {
@@ -299,8 +298,6 @@ public static class GrassFactory
             position += transform.position;
             var origin = position + Vector3.up * 20; //transform.TransformPoint(localPos) + (transform.up * 20);
 
-            allPosition.Add(origin);
-            
             RaycastHit hit;
             var didHit = Physics.Raycast(
                 origin: origin,

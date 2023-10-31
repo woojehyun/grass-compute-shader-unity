@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [RequireComponent(typeof(MeshFilter))]
 public class GrassSystem : MonoBehaviour
@@ -25,14 +26,6 @@ public class GrassSystem : MonoBehaviour
     public float Density = 1f;
     public float MaxExtent = 5f;
 
-    [Header("Grass Age")]
-    [Range(1, 10)]
-    public int AgeNoiseColumns = 5;
-    [Range(1, 10)]
-    public int AgeNoiseRows = 5;
-    public Color YoungGrassColor;
-    public Color OldGrassColor;
-
     [Header("Wind")]
     public Vector3 WindDirection = new Vector3(0, 0, 1);
     [Range(0, 0.5f)]
@@ -45,9 +38,6 @@ public class GrassSystem : MonoBehaviour
     [Range(1, 10)]
     public int WindNoiseRows = 5;
 
-    [Range(0f, 10f)]
-    public float fadeDis = 0f;
-
     private List<GrassBlade> _grassBlades;
     private ComputeBuffer _grassBladesBuffer;
 
@@ -57,41 +47,30 @@ public class GrassSystem : MonoBehaviour
     // for Graphics.DrawMeshInstancedIndirect
     private ComputeBuffer _argsBuffer;
     private Bounds _bounds;
-    //private Mesh _mesh;
     private int _grassBladesCount;
 
     private bool _isInitialized = false;
-
-    private uint[] _indicesCheck = null;
-    private ComputeBuffer _indicesBuffer;
 
     private BoundInfo _boundInfo;
     private ComputeBuffer _boundInfoBuffer;
 
     private ComputeBuffer _OutputGrassBladesBuffer;
 
-    private List<GrassBlade> list;
-
-    public Mesh _mesh;
+    public Mesh _grassMesh;
     
-    private List<Vector3> _allPosition;
-
     // Start is called before the first frame update
     IEnumerator Start()
     {
-        //_mesh = GrassFactory.GetGrassBladeMesh();
-
         while (MainCamera == null)
         {
             MainCamera = Camera.main;
             yield return null;
         }
             
-        
         _boundInfo = new GrassSystem.BoundInfo()
         {
-            _boundsCenter = _mesh.bounds.center,
-            _boundsExtents = _mesh.bounds.extents
+            _boundsCenter = _grassMesh.bounds.center,
+            _boundsExtents = _grassMesh.bounds.extents
         };
         
         var o = new GameObject("grass", typeof(MeshFilter));
@@ -115,8 +94,7 @@ public class GrassSystem : MonoBehaviour
             maxExtent: MaxExtent,
             density: Density,
             bounds: out _bounds,
-            grassBlades: out _grassBlades,
-            allPosition: out _allPosition
+            grassBlades: out _grassBlades
         );
     }
 
@@ -134,13 +112,6 @@ public class GrassSystem : MonoBehaviour
             stride: grassBladeMemorySize//_grassBlades.Length * grassBladeMemorySize
         );
 
-        _indicesCheck = new uint[_grassBlades.Count];
-
-        _indicesBuffer = new ComputeBuffer(
-            count: _indicesCheck.Length,
-            stride: sizeof(uint)
-        );
-
         _boundInfoBuffer = new ComputeBuffer(
             count: 1,
             stride: 6 * 4
@@ -154,8 +125,6 @@ public class GrassSystem : MonoBehaviour
             
         
         _grassBladesBuffer.SetData(_grassBlades);
-        
-        _indicesBuffer.SetData(_indicesCheck);
 
         BoundInfo[] boundArray = new BoundInfo[1] { _boundInfo};
         
@@ -165,7 +134,6 @@ public class GrassSystem : MonoBehaviour
 
         // this will let compute shader access the buffers
         ComputeShader.SetBuffer(_kernelIndex, "GrassBladesBuffer", _grassBladesBuffer);
-        ComputeShader.SetBuffer(_kernelIndex, "IndicesBuffer", _indicesBuffer);
         ComputeShader.SetBuffer(_kernelIndex, "boundInfo", _boundInfoBuffer);
 
         // this will let the surface shader access the buffer
@@ -186,7 +154,7 @@ public class GrassSystem : MonoBehaviour
         // this will be used by the vertex/fragment shader
         // to get the instance_id and vertex_id
         var args = new int[_argsCount] {
-            (int)_mesh.GetIndexCount(submesh: 0),       // indices of the mesh
+            (int)_grassMesh.GetIndexCount(submesh: 0),       // indices of the mesh
             _grassBladesCount,                          // number of objects to render
             0,0,0                                       // unused args
         };
@@ -211,7 +179,7 @@ public class GrassSystem : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (!_isInitialized || _grassBlades.Count == 0)
+        if (!_isInitialized)
         {
             return;
         }
@@ -219,8 +187,7 @@ public class GrassSystem : MonoBehaviour
         _OutputGrassBladesBuffer.SetCounterValue(0);
        
         ComputeShader.SetBuffer(_kernelIndex, "OutputGrassBladesBuffer", _OutputGrassBladesBuffer);
-        ComputeShader.SetFloat("Time", Time.time);
-        ComputeShader.SetFloat("fadeDis", fadeDis);
+        ComputeShader.SetFloat("Time", Time.time);        
         ComputeShader.SetInt("WindNoiseColumns", WindNoiseColumns);
         ComputeShader.SetInt("WindNoiseRows", WindNoiseRows);
         ComputeShader.SetFloat("WindVelocity", WindVelocity);
@@ -234,22 +201,15 @@ public class GrassSystem : MonoBehaviour
         ComputeBuffer.CopyCount(_OutputGrassBladesBuffer, _argsBuffer, sizeof(uint));
         
         Material.SetVector("WindDirection", WindDirection);
-        Material.SetFloat("WindForce", WindForce);
-        Material.SetColor("YoungGrassColor", YoungGrassColor);
-        Material.SetColor("OldGrassColor", OldGrassColor);
+        Material.SetFloat("WindForce", WindForce);        
 
         Graphics.DrawMeshInstancedIndirect(
-            mesh: _mesh,
+            mesh: _grassMesh,
             submeshIndex: 0,
             material: Material,
             bounds: _bounds,
             bufferWithArgs: _argsBuffer
-        );
-        
-        // for (int i = 0; i < _allPosition.Count; ++i)
-        // {
-        //     UnityEngine.Debug.DrawRay(_allPosition[i], Vector3.down * 30, Color.red);
-        // }
+        );        
         
         // for (int i = 0; i < _grassBlades.Count; ++i)
         // {

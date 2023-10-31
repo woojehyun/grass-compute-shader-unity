@@ -63,8 +63,8 @@ void SimulateGrass (uint3 id : SV_DispatchThreadID, uint3 threadGroupID : SV_Gro
 
     if(isInFrustum)
     {
-        const float viewDis = 10;
-        const float fadeOutDis = 3;
+        const float viewDis = 15;
+        const float fadeOutDis = 6;
         const float dis = distance(CameraPosition.xyz, grassBlade.position);
         isInFrustum = dis < viewDis + fadeOutDis ? 1 : 0;
         if(isInFrustum == 1 && (dis > viewDis && dis < viewDis + fadeOutDis))

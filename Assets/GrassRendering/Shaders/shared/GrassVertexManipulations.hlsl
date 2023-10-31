@@ -6,9 +6,9 @@
 float4 positionVertexInWorld(GrassBlade grassBlade, float4 positionOS) {
     // generate a translation matrix to move the vertex
     float4x4 scaleMatrix = float4x4(
-    0.2, 0, 0, 0,
-    0, 0.3, 0, 0,
-    0, 0, 0.2, 0,
+    0.15, 0, 0, 0,
+    0, 0.2, 0, 0,
+    0, 0, 0.15, 0,
     0, 0, 0, 1);
     
     float4x4 translationMatrix = getTranslation_Matrix(grassBlade.position);
@@ -35,10 +35,29 @@ float4 applyWind(GrassBlade grassBlade, float4 worldPosition, float3 windDirecti
     float4 displacedByWind = float4(displaced, 1);
 
     // base of the grass needs to be static on the floor
-    return lerp(worldPosition, displacedByWind, (worldPosition.y - grassBlade.position.y) / 1.4);//uv.y);
+    return lerp(worldPosition, displacedByWind, (worldPosition.y - grassBlade.position.y) / 0.25);//uv.y);
 }
 
-float3 positionGrassVertexInHClipPos(
+float3 positionGrassVertex(
+    StructuredBuffer<GrassBlade> GrassBladesBuffer,
+    uint instance_id,
+    out GrassBlade grassBlade,
+    float4 positionOS,    
+    float3 windDirection,
+    float windForce
+) {
+    // get the instanced grass blade
+    grassBlade = GrassBladesBuffer[instance_id];
+
+    float4 worldPosition = positionVertexInWorld(grassBlade, positionOS);
+    //worldPosition = applyWind(grassBlade, worldPosition, windDirection, windForce);
+
+    // translate the world pos to clip pos
+    //return TransformWorldToHClip(worldPosition);
+    return worldPosition.xyz;
+}
+
+float3 positionWindGrassVertex(
     StructuredBuffer<GrassBlade> GrassBladesBuffer,
     uint instance_id,
     out GrassBlade grassBlade,
