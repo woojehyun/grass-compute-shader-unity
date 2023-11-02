@@ -41,8 +41,22 @@ public class GrassSystem : MonoBehaviour
     private List<GrassBlade> _grassBlades;
     private ComputeBuffer _grassBladesBuffer;
 
-    private int _kernelIndex;
-    private uint _threadGroupsCountX;
+    private int _kernelIndex = -1;
+
+    private int KernelIndex
+    {
+        get
+        {
+            if(_kernelIndex == -1)
+                _kernelIndex = ComputeShader.FindKernel("SimulateGrass");
+
+            return _kernelIndex;
+        }
+    }
+
+    // numthreads.x
+    private uint _threadGroupsSizeX;
+    private uint _threadGroupX;
 
     // for Graphics.DrawMeshInstancedIndirect
     private ComputeBuffer _argsBuffer;
@@ -77,10 +91,10 @@ public class GrassSystem : MonoBehaviour
         var meshFilter = o.GetComponent<MeshFilter>();
         meshFilter.sharedMesh = GrassFactory.GetGrassBladeMesh();
 
+        InitializeThreadGroupsSize();
         InitializeGrassBlades();
         InitializeGrassBladesBuffer();
         InitializeIndirectArgsBuffer();
-        InitializeThreadGroupsSize();
         SetOneTimeValues();
 
         _isInitialized = true;
@@ -93,6 +107,7 @@ public class GrassSystem : MonoBehaviour
             meshFilter: GetComponent<MeshFilter>(),
             maxExtent: MaxExtent,
             density: Density,
+            threadCount: _threadGroupsSizeX, 
             bounds: out _bounds,
             grassBlades: out _grassBlades
         );
@@ -130,11 +145,11 @@ public class GrassSystem : MonoBehaviour
         
         _boundInfoBuffer.SetData(boundArray);
 
-        _kernelIndex = ComputeShader.FindKernel("SimulateGrass");
-
         // this will let compute shader access the buffers
-        ComputeShader.SetBuffer(_kernelIndex, "GrassBladesBuffer", _grassBladesBuffer);
-        ComputeShader.SetBuffer(_kernelIndex, "boundInfo", _boundInfoBuffer);
+        ComputeShader.SetBuffer(KernelIndex, "GrassBladesBuffer", _grassBladesBuffer);
+        ComputeShader.SetBuffer(KernelIndex, "boundInfo", _boundInfoBuffer);
+
+        _threadGroupX = (uint)_grassBlades.Count / _threadGroupsSizeX;
 
         // this will let the surface shader access the buffer
         //Material.SetBuffer("GrassBladesBuffer", _grassBladesBuffer);
@@ -165,9 +180,7 @@ public class GrassSystem : MonoBehaviour
     private void InitializeThreadGroupsSize()
     {
         // calculate amount of thread groups
-        uint threadGroupSizeX;
-        ComputeShader.GetKernelThreadGroupSizes(_kernelIndex, out threadGroupSizeX, out _, out _);
-        _threadGroupsCountX = (uint)_grassBlades.Count / threadGroupSizeX;
+        ComputeShader.GetKernelThreadGroupSizes(KernelIndex, out _threadGroupsSizeX, out _, out _);
     }
 
     private void SetOneTimeValues()
@@ -186,7 +199,7 @@ public class GrassSystem : MonoBehaviour
 
         _OutputGrassBladesBuffer.SetCounterValue(0);
        
-        ComputeShader.SetBuffer(_kernelIndex, "OutputGrassBladesBuffer", _OutputGrassBladesBuffer);
+        ComputeShader.SetBuffer(KernelIndex, "OutputGrassBladesBuffer", _OutputGrassBladesBuffer);
         ComputeShader.SetFloat("Time", Time.time);        
         ComputeShader.SetInt("WindNoiseColumns", WindNoiseColumns);
         ComputeShader.SetInt("WindNoiseRows", WindNoiseRows);
@@ -194,8 +207,7 @@ public class GrassSystem : MonoBehaviour
         ComputeShader.SetVector("CameraPosition", MainCamera.transform.position);
         ComputeShader.SetMatrix("ViewMatrix", MainCamera.projectionMatrix * MainCamera.worldToCameraMatrix);
 
-
-        ComputeShader.Dispatch(_kernelIndex, (int)_threadGroupsCountX, 1, 1);
+        ComputeShader.Dispatch(KernelIndex, (int)_threadGroupX, 1, 1);
         
         Material.SetBuffer("OutputGrassBladesBuffer", _OutputGrassBladesBuffer);
         ComputeBuffer.CopyCount(_OutputGrassBladesBuffer, _argsBuffer, sizeof(uint));

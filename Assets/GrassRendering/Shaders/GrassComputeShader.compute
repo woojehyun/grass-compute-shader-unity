@@ -28,13 +28,11 @@ inline uint IsVisibleAfterFrustumCulling(float4 clipPos)
             ? 0 : 1;
 }
 
-[numthreads(32,1,1)]
-void SimulateGrass (uint3 id : SV_DispatchThreadID, uint3 threadGroupID : SV_GroupThreadID)
+[numthreads(64,1,1)]
+void SimulateGrass (uint3 id : SV_DispatchThreadID)
 {
-    //SV_DispatchThreadID = current group id * numthreads(8,8,1) + current group thread id  
-
-    uint index = id.x + threadGroupID.x * 32;
-    GrassBlade grassBlade = GrassBladesBuffer[index]; 
+    uint index = id.x;
+    GrassBlade grassBlade = GrassBladesBuffer[index];
 
     //Check if the instance is visible
     float3 minPos = boundInfo[0].boundsCenter - boundInfo[0].boundsExtents + grassBlade.position;

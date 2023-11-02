@@ -205,6 +205,7 @@ public static class GrassFactory
         MeshFilter meshFilter,
         float maxExtent,
         float density,
+        uint threadCount, // threadGroupSizeX * threadGroupSizeY
         out Bounds bounds,
         out List<GrassBlade> grassBlades
         
@@ -318,6 +319,17 @@ public static class GrassFactory
                 grassBlade.rotationY = Random.Range((float)-System.Math.PI, (float)System.Math.PI);
 
                 grassBlades.Add(grassBlade);
+            }
+        }
+
+        // grassBlades의 총 수가 threadCount의 배수가 아닐 경우 나머지 수 만큼 요소 제거.
+        var remainder = grassBlades.Count % threadCount; 
+        if (remainder != 0)
+        {
+            while (remainder > 0)
+            {
+                grassBlades.RemoveAt(grassBlades.Count - 1);
+                --remainder;
             }
         }
 #endif

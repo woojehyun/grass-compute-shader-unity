@@ -276,20 +276,15 @@ MonoBehaviour:
   clipPosZ: 0
   MainCamera: {fileID: 963194227}
   Material: {fileID: 2100000, guid: 9994934f842a47b45ab9f04c274c91d8, type: 2}
-  ComputeShader: {fileID: 7200000, guid: 23c4567dfe7909d40881c92b69371aa9, type: 3}
-  Density: 10
+  ComputeShader: {fileID: 7200000, guid: cd98ec0c441024352bcf99c2f94d7b9b, type: 3}
+  Density: 40
   MaxExtent: 10
-  AgeNoiseColumns: 4
-  AgeNoiseRows: 6
-  YoungGrassColor: {r: 0, g: 0.59607846, b: 0.07058824, a: 0}
-  OldGrassColor: {r: 0.6431373, g: 0, b: 0.05490196, a: 0}
   WindDirection: {x: 0, y: 0, z: 1}
   WindForce: 0.119
   WindVelocity: 1.7
   WindNoiseColumns: 5
   WindNoiseRows: 5
-  fadeDis: 0
-  _mesh: {fileID: 4739146030643578576, guid: dcd1036bb6e1752449a93c9019616be2, type: 3}
+  _grassMesh: {fileID: 4739146030643578576, guid: bfe3fab3376cb0f4ea1df131247252ca, type: 3}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
